@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from data.data_transforms import AddInverse
 from modules.bcosconv2d import BcosConv2d
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 from typing import Type, Any, Callable, Union, List, Optional
 
 

@@ -39,7 +39,9 @@ def initialise(get_model, params, ddp_rank, world_size):
     if params.clear_folder:
         [os.system("rm -r {file_or_dir}".format(file_or_dir=os.path.join(save_path, f)))
          for f in os.listdir(save_path) if not f.startswith("screen")]
+
     exp_params = get_exp_params(save_path)
+    print('exp_params : ', exp_params)
     network = get_model(exp_params)
 
     if ddp_rank is not None:

@@ -1,12 +1,16 @@
 import os
 
+os.getcwd()
+os.path.isdir('experiment_utils.py')
+
 import torch
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 
+
 from experiment_utils import get_arguments
 from models.baselines.pretrained import MyVGG11, MyResNet34, MyDenseNet121, MyInception
-from models.bcos.densenet import densenet121
+from models.bcos.densenet import densenet121, my_densenet121
 from models.bcos.inception import inception_v3
 from torch.hub import download_url_to_file
 from models.bcos.resnet import resnet34
@@ -16,6 +20,7 @@ from training.training_utils import start_training
 
 archs = {
     "densenet_121": densenet121,
+    "my_densenet_121": my_densenet121,
     "inception_v3": inception_v3,
     "vgg_11": vgg11,
     "resnet_34": resnet34,
@@ -45,7 +50,8 @@ def get_pretrained_model(exp_params):
 def load_pretrained(exp_params, network):
     model_path = os.path.join("bcos_pretrained", exp_params["exp_name"])
     model_file = os.path.join(model_path, "state_dict.pkl")
-
+    print(model_path)
+    print(model_file)
     if not os.path.exists(model_file):
         if not os.path.exists(model_path):
             os.makedirs(model_path)

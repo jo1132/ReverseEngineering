@@ -7,18 +7,20 @@ import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-matplotlib.rcParams['mathtext.fontset'] = 'custom'
-matplotlib.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
-matplotlib.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
-matplotlib.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
-params = {'text.usetex': True,
-          'font.size': 16,
-          'text.latex.preamble': [r"\usepackage{lmodern}"],
-          'font.family': 'sans-serif',
-          'font.serif': 'Computer Modern Sans serif',
+
+#matplotlib.rcParams['mathtext.fontset'] = 'custom'
+#matplotlib.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+#matplotlib.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+#matplotlib.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+ 
+#params = {'text.usetex': True,
+#          'font.size': 16,
+#          'text.latex.preamble': [r"\usepackage{lmodern}"],
+#          'font.family': 'sans-serif',
+#          'font.serif': 'Computer Modern Sans serif',
           # 'text.latex.unicode': True,
-          }
-plt.rcParams.update(params)
+#          }
+#plt.rcParams.update(params)
 
 sns.set_style("darkgrid")
 

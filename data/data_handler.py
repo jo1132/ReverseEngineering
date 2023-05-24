@@ -22,7 +22,7 @@ class Data:
         "num_workers": 8,
         "batch_size": 16,
         "test_batch_size": None,
-        "num_classes": 10,
+        "num_classes": 1000,
     }
 
     def __init__(self, dataset_name, data_path=DATA_ROOT,
@@ -102,6 +102,7 @@ class Data:
         )
 
         # Initialise dataset
+        print(self.data_path)
         data = Data.datasets[self.dataset_name](self.data_path, train=train, download=False,
                                                 transform=data_transform,
                                                 target_transform=self.target_transform, **data_params)

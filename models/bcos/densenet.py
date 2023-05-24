@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as cp
 from collections import OrderedDict
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 from torch import Tensor
 from typing import Any, List, Tuple
 from data.data_transforms import AddInverse
@@ -134,6 +134,7 @@ class _DenseBlock(nn.ModuleDict):
         for name, layer in self.items():
             new_features = layer(features)
             features.append(new_features)
+
         return torch.cat(features, 1)
 
 
@@ -238,8 +239,10 @@ class DenseNet(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         features = self.features(x)
+
         # Diff to torchvision: Deleted relu and moved avg pool to after conv classification layer
         out = self.classifier(features)
+
         # Diff End
         return out
 
@@ -290,6 +293,21 @@ def densenet121(pretrained: bool = False, progress: bool = True,
           but slower. Default: *False*. See `"paper" <https://arxiv.org/pdf/1707.06990.pdf>`_.
     """
     return _densenet('densenet121', growth_rate, (6, 12, 24, 16), num_init_features, pretrained, progress,
+                     **kwargs)
+
+def my_densenet121(pretrained: bool = False, progress: bool = True,
+                num_init_features=64, growth_rate=32,
+                **kwargs: Any) -> DenseNet:
+    r"""Densenet-121 model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+        memory_efficient (bool) - If True, uses checkpointing. Much more memory efficient,
+          but slower. Default: *False*. See `"paper" <https://arxiv.org/pdf/1707.06990.pdf>`_.
+    """
+    return _densenet('densenet121', growth_rate, (24, 16), num_init_features, pretrained, progress,
                      **kwargs)
 
 

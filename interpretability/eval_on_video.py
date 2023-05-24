@@ -18,7 +18,7 @@ def load_video(path, relative_box=[0., 1., 0., 1.], relative_times=[0., 1.]):
 
     # Opens the Video file
     cap = cv2.VideoCapture(path)
-    fps = cap.get(cv2.cv2.CAP_PROP_FPS)
+    fps = cap.get(cv2.CAP_PROP_FPS)
     frames = []
     w1, w2, h1, h2 = relative_box
     start, end = relative_times

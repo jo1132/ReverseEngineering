@@ -4,7 +4,7 @@ import warnings
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 from typing import Callable, Any, Optional, Tuple, List
 from modules.bcosconv2d import BcosConv2d
 

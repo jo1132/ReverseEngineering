@@ -27,6 +27,9 @@ class TopKAcc:
 
             res = dict()
             for k in self.topk:
+                #print('correct')
+                #print(self.topk)
+                #print(correct)
                 correct_k = correct[:k].view(-1).float().sum(0)
                 _res = float(to_numpy((correct_k/batch_size)))
                 if k == 1:
@@ -359,7 +362,7 @@ class CumulResultDict(dict):
         """Calls .item() on tensor objects, otherwise returns value again."""
         if isinstance(value, torch.Tensor):
             value = value.item()
-        if isinstance(value, np.float):
+        if isinstance(value, np.float32):
             value = float(value)
         assert type(value) in (float, int, bool, str), str(type(value))
         return value

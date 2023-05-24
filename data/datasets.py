@@ -31,6 +31,7 @@ class Imagenet(ImageFolder):
     def __init__(self, root, train=True, transform=None, target_transform=None, class_idcs=None,
                  **kwargs):
         _ = kwargs  # Just for consistency with other datasets.
+        #print(root, self.base_folder, "train" if train else "val")
         path = os.path.join(root, self.base_folder, "train" if train else "val")
         super().__init__(path, transform=transform, target_transform=target_transform)
         if class_idcs is not None:

@@ -35,8 +35,14 @@ def get_exp_params(save_path):
     """
     base_dir, dataset, base_net, exp_name = save_path.split("/")[-4:]
     exp_params_module = ".".join([base_dir, dataset, base_net, "experiment_parameters"])
+
+    #print(exp_params_module)
+
     exp_params_module = import_module(exp_params_module)
+ 
     exp_params = exp_params_module.get_exp_params(exp_name)
+    #print(exp_name)
+    #print(exp_params)
     return exp_params
 
 
@@ -65,9 +71,9 @@ def argument_parser():
                         help="Relative path to root folder for the desired experiment configurations.")
     parser.add_argument("--distributed", default=False, type=str_to_bool,
                         help="Path for saving experiment results.")
-    parser.add_argument("--dataset_name", default="CIFAR10",
+    parser.add_argument("--dataset_name", default="Imagenet",
                         type=str, help="Dataset name for data handler.")
-    parser.add_argument("--experiment_name", default="9L-S-CoDA-SQ-1000",
+    parser.add_argument("--experiment_name", default="densenet_121_cossched",
                         type=str, help="Experiment name to load.")
     parser.add_argument("--model_config", default="final",
                         type=str, help="Name of the model config folder.")

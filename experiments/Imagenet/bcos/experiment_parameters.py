@@ -49,7 +49,8 @@ def get_aug_trans(n=2, m=9, s=160, min_scale=0.08):
 
 
 default_config = {
-    "virtual_batch_size": 256,
+    #"virtual_batch_size": 256,
+    "virtual_batch_size": 16,
     "batch_size": 256,
     "num_classes": 1000,
     "loss": CombinedLosses(LogitsBCE()),
@@ -59,7 +60,8 @@ default_config = {
     "keep_n_checkpoints": 2,
     "opti": "Adam",
     "opti_opts": dict(),
-    "eval_batch_f": TopKAcc((1, 5)),
+    #"eval_batch_f": TopKAcc((1, 5)),
+    "eval_batch_f": TopKAcc((1, )),
     "logit_temperature": 10**(-1),
     "stopped": False,
     "base_lr": 2.5e-4,
@@ -69,7 +71,8 @@ default_config = {
     "add_inverse": True,
     "pre_process_length": 0,
     "lr_steps": 60,
-    "num_epochs": 100,
+    #"num_epochs": 100,
+    "num_epochs": 3,
     "pre_process_img": AddInverse(),
     "fraction_of_batch": 1,
     "deterministic": False,
@@ -127,6 +130,23 @@ densenets_cossched = {
     for d in [121]
 }
 
+my_densenets_cossched = {
+    "my_densenet_{}_cossched".format(d): update_default({
+        #"model_url": "https://nextcloud.mpi-klsb.mpg.de/index.php/s/G8kdm73qWn4L8Lg/download",
+        "network": "my_densenet_{d}".format(d=d),
+        "logit_temperature": 10 ** (-3),
+        "batch_size": 128,
+        "virtual_batch_size": 128,
+        "num_epochs": 200,
+        "sched_opts": {"sched": cosine_scheduler(1e-3, 1e-4, 200, warmup_epochs=10, start_warmup_value=1e-5)},
+        "schedule": SimpleSchedule,
+        # Memory efficient version is much slower and on slurm there is space even if using just two GPUs
+        "network_opts": {"memory_efficient": False},
+        #"load_pretrained": False, # Set True for check trained model 764
+    })
+    for d in [121]
+}
+
 resnet = {
     "resnet_{d}".format(d=d): update_default({
         "model_url": "https://nextcloud.mpi-klsb.mpg.de/index.php/s/mYe6TggQsDymZbk/download",
@@ -143,7 +163,8 @@ vgg = {
         "network": "vgg_{}".format(d),
         "logit_temperature": 1e-1,
         "network_opts": {"emb_ch": 6},
-        "batch_size": 128
+        #"batch_size": 128
+        "batch_size": 16
     })
     for d in [11]
 }
@@ -165,6 +186,7 @@ inception_v3 = {
 exps = dict()
 exps.update(densenets)
 exps.update(densenets_cossched)
+exps.update(my_densenets_cossched)
 exps.update(inception_v3)
 exps.update(vgg)
 exps.update(resnet)

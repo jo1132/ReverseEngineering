@@ -174,6 +174,7 @@ class Trainer:
         lr = self.optimiser.get_current_lr()
         self.measurements.add_measurement("learning_rate", self.epoch, lr)
         results = CumulResultDict(total_samples, self.verbose, **self.options)
+        print(self.options["virtual_batch_size"])
         vb = self.options["virtual_batch_size"]
         if vb is None:
             vb = self.options["batch_size"]

@@ -1,6 +1,12 @@
 import os
 from collections import Iterable
 
+from experiments.Imagenet.bcos.experiment_parameters import exps
+from interpretability.utils import explanation_mode
+from models.bcos.densenet import densenet121
+from modules.utils import FinalLayer, MyAdaptiveAvgPool2d
+from torch.hub import download_url_to_file
+
 import torch
 import torch.distributed as dist
 from torch.nn.parallel.distributed import DistributedDataParallel
@@ -69,6 +75,44 @@ class Trainer:
         self.test_loader = self.data.get_test_loader()
         self.save_path = save_path
 
+        self.exp_params = exps["densenet_121_cossched"]
+        self.teacher_model = self.get_teacher_model(self.exp_param).cuda()
+        # Setting detaching to True
+        explanation_mode(self.teacher_model, True)
+
+        self.archs = {
+            "densenet_121": densenet121
+                    }
+
+
+    def get_teacher_model(self):
+        logit_bias = self.exp_params["logit_bias"]
+        logit_temperature = self.exp_params["logit_temperature"]
+        network = self.archs[self.exp_params["network"]]
+        network_opts = self.exp_params["network_opts"]
+        network_list = [network(**network_opts)]
+
+        network_list += [
+            MyAdaptiveAvgPool2d((1, 1)),
+            FinalLayer(bias=logit_bias, norm=logit_temperature)
+        ]
+        network = nn.Sequential(*network_list)
+        if self.exp_params["load_pretrained"]:
+            self.load_pretrained(self.exp_params, network)
+        network.opti = self.exp_params["opti"]
+        network.opti_opts = self.exp_params["opti_opts"]
+        return network
+    def load_pretrained(exp_params, network):
+        model_path = os.path.join("bcos_pretrained", exp_params["exp_name"])
+        model_file = os.path.join(model_path, "state_dict.pkl")
+
+        if not os.path.exists(model_file):
+            if not os.path.exists(model_path):
+                os.makedirs(model_path)
+            download_url_to_file(exp_params["model_url"], model_file)
+        loaded_state_dict = torch.load(model_file, map_location="cpu")
+        network.load_state_dict(loaded_state_dict)
+        return network
     def set_optimiser(self, optimiser):
         """
         Setting the optimiser for training the model.
@@ -128,14 +172,23 @@ class Trainer:
             If it returns None, this 'step' will be skipped (e.g. if the batch size does not allow for creating
                 a multi-image of the correct size).
             Additionally, return the batch size.
-
         """
         img, tgt = self.preprocess_batch(batch)
         batch_size = len(img)
 
         class_scores = self(img)
 
-        batch_results = self.loss(self, class_scores, img, tgt)
+        if self.exp_params['knoledge_distillation']:
+            # 현재 모델의 들어온 입력에 대한 시각화 attribute
+            att = self.attribute(img, tgt)
+            top2, c_idcs = self.teacher_model(img)[0].topk(2)
+            # Compute w_1:
+            img.grad = None
+            top2[0].backward(retain_graph=True)
+            w1 = img.grad
+            
+
+        batch_results = self.loss(self, class_scores, img, tgt, att, w1)
         total_loss = batch_results.collect()
 
         stepped = self.optimiser.maybe_step(total_loss, batch_size=batch_size)

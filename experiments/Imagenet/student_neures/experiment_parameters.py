@@ -78,8 +78,8 @@ default_config = {
     "deterministic": False,
     "decay_factor": 10,
 
-    "knoledge_distillation" : False,
-    "neures" : False,
+    "knoledge_distillation" : True,
+    "neures" : True,
 }
 
 
@@ -122,9 +122,12 @@ densenets_cossched = {
         "model_url": "https://nextcloud.mpi-klsb.mpg.de/index.php/s/G8kdm73qWn4L8Lg/download",
         "network": "densenet_{d}".format(d=d),
         "logit_temperature": 10 ** (-3),
-        "batch_size": 128,
-        "virtual_batch_size": 128,
-        "num_epochs": 200,
+        #"batch_size": 128,
+        "batch_size": 16,
+        #"virtual_batch_size": 128,
+        "virtual_batch_size": 16,
+        #"num_epochs": 200,
+        "num_epochs": 2,
         "sched_opts": {"sched": cosine_scheduler(1e-3, 1e-4, 200, warmup_epochs=10, start_warmup_value=1e-5)},
         "schedule": SimpleSchedule,
         # Memory efficient version is much slower and on slurm there is space even if using just two GPUs
@@ -138,14 +141,17 @@ my_densenets_cossched = {
         #"model_url": "https://nextcloud.mpi-klsb.mpg.de/index.php/s/G8kdm73qWn4L8Lg/download",
         "network": "my_densenet_{d}".format(d=d),
         "logit_temperature": 10 ** (-3),
-        "batch_size": 128,
-        "virtual_batch_size": 128,
-        "num_epochs": 200,
+        #"batch_size": 128,
+        "batch_size": 16,
+        #"virtual_batch_size": 128,
+        "virtual_batch_size": 16,
+        #"num_epochs": 200,
+        "num_epochs": 10,
         "sched_opts": {"sched": cosine_scheduler(1e-3, 1e-4, 200, warmup_epochs=10, start_warmup_value=1e-5)},
         "schedule": SimpleSchedule,
         # Memory efficient version is much slower and on slurm there is space even if using just two GPUs
         "network_opts": {"memory_efficient": False},
-        #"load_pretrained": False, # Set True for check trained model 764
+        "load_pretrained": False,
     })
     for d in [121]
 }

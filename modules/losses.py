@@ -34,14 +34,21 @@ class CombinedLosses:
         """
         self.losses = losses
         self.eval_losses = eval_losses
+
+        self.mse_loss = nn.MSELoss()
+
+
         assert isinstance(eval_losses, Iterable), "eval_losses needs to be an Iterable."
 
-    def __call__(self, trainer, model_out, img, tgt, filtered=False):
+    def __call__(self, trainer, model_out, img, tgt, att, tc_att, filtered=False): # 훈련중인 모델의 attribute정보 추가
         result_dict = LossDict()
+
         for loss in self.losses:
             if filtered and loss.get_alias() not in self.eval_losses:
                 continue
             result_dict.update(loss.compute(trainer, model_out, img, tgt))
+
+        result_dict.update({"KD_loss" : self.mse_loss(att, tc_att)})
         return result_dict
 
     def __str__(self):

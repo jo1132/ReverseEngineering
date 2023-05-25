@@ -77,6 +77,9 @@ default_config = {
     "fraction_of_batch": 1,
     "deterministic": False,
     "decay_factor": 10,
+
+    "knoledge_distillation" : False,
+    "neures" : False,
 }
 
 

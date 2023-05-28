@@ -19,7 +19,7 @@ class Data:
     }
 
     default_params = {
-        "num_workers": 8,
+        "num_workers": 0,
         "batch_size": 16,
         "test_batch_size": None,
         "num_classes": 1000,

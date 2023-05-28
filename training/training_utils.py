@@ -90,7 +90,7 @@ def training_loop(params, get_model, get_optimizer, ddp_rank=None, world_size=No
         optimiser = ExtendedOptimiser(get_optimizer(network, exp_params["base_lr"]), save_path,
                                       **exp_params)
         # Initialise trainer object
-        trainer = Trainer(network, data_handler, save_path, ddp_rank=ddp_rank, **exp_params)
+        trainer = Trainer(network, data_handler, save_path, ddp_rank=ddp_rank, exp_params=exp_params, **exp_params)
         trainer.set_optimiser(optimiser)
 
         # Might continue from old checkpoint

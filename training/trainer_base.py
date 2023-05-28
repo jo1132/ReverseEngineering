@@ -6,6 +6,12 @@ from interpretability.utils import explanation_mode
 from models.bcos.densenet import densenet121
 from modules.utils import FinalLayer, MyAdaptiveAvgPool2d
 from torch.hub import download_url_to_file
+from torch.autograd import Variable
+from data.data_transforms import AddInverse
+from interpretability.utils import grad_to_img, explanation_mode
+from project_utils import to_numpy, to_numpy_img
+import numpy as np
+import torch.nn.functional as F
 
 import torch
 import torch.distributed as dist
@@ -21,7 +27,7 @@ from training.utils import Measurements, trim_n_checkpoints, CumulResultDict, de
 
 class Trainer:
 
-    def __init__(self, model, data_handler, save_path, loss, pre_process_img=NoTransform(),
+    def __init__(self, model, data_handler, save_path, loss, exp_params, pre_process_img=NoTransform(),
                  pre_process_batch_f=default_batch_pre_f, eval_batch_f=tuple([default_eval_batch]),
                  ddp_rank=None, verbose=True, to_probabilities=torch.sigmoid, **options):
         """
@@ -74,22 +80,21 @@ class Trainer:
         self.train_loader = self.data.get_train_loader()
         self.test_loader = self.data.get_test_loader()
         self.save_path = save_path
-
-        self.exp_params = exps["densenet_121_cossched"]
-        self.teacher_model = self.get_teacher_model(self.exp_param).cuda()
+        
+        self.exp_params = exp_params
+        self.tc_params = exps["densenet_121_cossched"]
+        self.teacher_model = self.get_teacher_model().cuda()
+        self.RELU = nn.ReLU()
+        self.MSE = nn.MSELoss()
         # Setting detaching to True
         explanation_mode(self.teacher_model, True)
 
-        self.archs = {
-            "densenet_121": densenet121
-                    }
-
 
     def get_teacher_model(self):
-        logit_bias = self.exp_params["logit_bias"]
-        logit_temperature = self.exp_params["logit_temperature"]
-        network = self.archs[self.exp_params["network"]]
-        network_opts = self.exp_params["network_opts"]
+        logit_bias = self.tc_params["logit_bias"]
+        logit_temperature = self.tc_params["logit_temperature"]
+        network = densenet121
+        network_opts = self.tc_params["network_opts"]
         network_list = [network(**network_opts)]
 
         network_list += [
@@ -97,22 +102,25 @@ class Trainer:
             FinalLayer(bias=logit_bias, norm=logit_temperature)
         ]
         network = nn.Sequential(*network_list)
-        if self.exp_params["load_pretrained"]:
-            self.load_pretrained(self.exp_params, network)
-        network.opti = self.exp_params["opti"]
-        network.opti_opts = self.exp_params["opti_opts"]
+        if self.tc_params["load_pretrained"]:
+            self.load_pretrained(network)
+        network.opti = self.tc_params["opti"]
+        network.opti_opts = self.tc_params["opti_opts"]
         return network
-    def load_pretrained(exp_params, network):
-        model_path = os.path.join("bcos_pretrained", exp_params["exp_name"])
+    
+    def load_pretrained(self, network):
+        model_path = os.path.join("bcos_pretrained", self.tc_params["exp_name"])
         model_file = os.path.join(model_path, "state_dict.pkl")
 
         if not os.path.exists(model_file):
             if not os.path.exists(model_path):
                 os.makedirs(model_path)
-            download_url_to_file(exp_params["model_url"], model_file)
+            download_url_to_file(self.tc_params["model_url"], model_file)
         loaded_state_dict = torch.load(model_file, map_location="cpu")
         network.load_state_dict(loaded_state_dict)
         return network
+    
+
     def set_optimiser(self, optimiser):
         """
         Setting the optimiser for training the model.
@@ -177,18 +185,48 @@ class Trainer:
         batch_size = len(img)
 
         class_scores = self(img)
+        mse_loss = 0
 
-        if self.exp_params['knoledge_distillation']:
-            # 현재 모델의 들어온 입력에 대한 시각화 attribute
-            att = self.attribute(img, tgt)
-            top2, c_idcs = self.teacher_model(img)[0].topk(2)
-            # Compute w_1:
-            img.grad = None
-            top2[0].backward(retain_graph=True)
-            w1 = img.grad
-            
+        if self.exp_params['knowledge_distillation']:
+            for each_img in img:
+                # teacher모델의 weight
+                _img = each_img.unsqueeze(dim=0)
+                _img = Variable(AddInverse()(_img), requires_grad=True)
+                top, c_idcs = self.teacher_model(_img).topk(1)
+                _img.grad = None
+                top.backward(retain_graph=True)
+                tc_w = _img.grad.clone().detach()
 
-        batch_results = self.loss(self, class_scores, img, tgt, att, w1)
+                if self.exp_params['neures']:
+                    tc_w = self.move_and_scale(tc_w, self.RELU)
+
+                tc_w = self.get_alpha_matrix(_img, tc_w)
+
+                # student 모델의 weight
+                self.explanation_mode(True)
+                _img = each_img.unsqueeze(dim=0)
+                _img = Variable(_img, requires_grad=True)
+                _img.grad = None
+                top, c_idcs = self(_img).topk(1)
+                top.backward(retain_graph=True)
+                stu_w = _img.grad.clone().detach()
+                _img = Variable(AddInverse()(_img), requires_grad=True)
+                stu_w = Variable(AddInverse()(stu_w), requires_grad=True)
+
+                if self.exp_params['neures']:
+                    stu_w = self.move_and_scale(stu_w, self.RELU)
+
+                stu_w = self.get_alpha_matrix(_img, stu_w)
+                self.explanation_mode(False)
+
+                # MSE loss
+                mse_loss += self.MSE(stu_w, tc_w)
+        
+        print(mse_loss)
+        print(len(img))
+        mse_loss = mse_loss / len(img)
+        print(mse_loss)
+        batch_results = self.loss(self, class_scores, img, tgt, mse_loss)
         total_loss = batch_results.collect()
 
         stepped = self.optimiser.maybe_step(total_loss, batch_size=batch_size)
@@ -197,6 +235,34 @@ class Trainer:
         eval_result = self.eval_batch(class_scores, img, tgt)
         batch_results.update(eval_result)
         return batch_results, batch_size
+    
+    def get_alpha_matrix(self, img, linear_mapping, smooth=15, alpha_percentile=99.5):
+        # shape of img and linmap is [C, H, W], summing over first dimension gives the contribution map per location
+        contribs = (img * linear_mapping).sum(0, keepdim=True)
+        contribs = contribs[0]
+        alpha = (linear_mapping.norm(p=2, dim=0, keepdim=True))
+        alpha = torch.where(contribs[None] < 0, torch.zeros_like(alpha) + 1e-12, alpha)
+        if smooth:
+                alpha = F.avg_pool2d(alpha, smooth, stride=1, padding=(smooth-1)//2)
+        alpha = (alpha / np.percentile(to_numpy(alpha), alpha_percentile)).clip(0, 1)
+        return alpha
+
+    def get_mse_shape(self, w, teacher=False):
+        w = w.squeeze() 
+        print('w: ', w.shape)
+        w = w.transpose((1, 2, 0))
+        if teacher:
+            w = w[:, :, :3]
+        return w
+    
+    def move_and_scale(self, img, activation_func, temp=20):
+        img_move = img - img.mean()
+        img_scale = img_move / (temp * (img.max() - img.min()))
+        img_filtered = activation_func(img_scale)
+        return img_filtered - 0.001
+
+    #def get_teacher_prediction(self):
+
 
     def predict(self, img, to_probabilities=True):
         """

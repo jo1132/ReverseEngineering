@@ -40,7 +40,7 @@ class CombinedLosses:
 
         assert isinstance(eval_losses, Iterable), "eval_losses needs to be an Iterable."
 
-    def __call__(self, trainer, model_out, img, tgt, att, tc_att, filtered=False): # 훈련중인 모델의 attribute정보 추가
+    def __call__(self, trainer, model_out, img, tgt, mse_loss=[], filtered=False): # 훈련중인 모델의 attribute정보 추가
         result_dict = LossDict()
 
         for loss in self.losses:
@@ -48,7 +48,8 @@ class CombinedLosses:
                 continue
             result_dict.update(loss.compute(trainer, model_out, img, tgt))
 
-        result_dict.update({"KD_loss" : self.mse_loss(att, tc_att)})
+        if mse_loss:
+            result_dict.update({"KD_loss" : mse_loss})
         return result_dict
 
     def __str__(self):

@@ -66,6 +66,7 @@ def grad_to_img(img, linear_mapping, smooth=15, alpha_percentile=99.5):
     alpha = (linear_mapping.norm(p=2, dim=0, keepdim=True))
     # Only show positive contributions
     alpha = torch.where(contribs[None] < 0, torch.zeros_like(alpha) + 1e-12, alpha)
+    #alpha = torch.where(contribs[None] <= 0, torch.zeros_like(alpha), alpha)
     if smooth:
         alpha = F.avg_pool2d(alpha, smooth, stride=1, padding=(smooth-1)//2)
     alpha = to_numpy(alpha)
@@ -73,6 +74,7 @@ def grad_to_img(img, linear_mapping, smooth=15, alpha_percentile=99.5):
 
     rgb_grad = np.concatenate([rgb_grad, alpha], axis=0)
     # Reshaping to [H, W, C]
+    print(rgb_grad.shape)
     grad_image = rgb_grad.transpose((1, 2, 0))
     return grad_image
 

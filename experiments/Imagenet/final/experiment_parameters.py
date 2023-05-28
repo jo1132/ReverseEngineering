@@ -78,7 +78,7 @@ default_config = {
     "deterministic": False,
     "decay_factor": 10,
 
-    "knoledge_distillation" : False,
+    "knowledge_distillation" : False,
     "neures" : False,
 }
 
